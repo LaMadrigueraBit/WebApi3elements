@@ -31,5 +31,13 @@ namespace WebApi3elements.Models
         }
 
         public System.Data.Entity.DbSet<WebApi3elements.Models.Measure> Measures { get; set; }
+
+        public System.Data.Entity.DbSet<WebApi3elements.Models.Breakdown> Breakdowns { get; set; }
+
+        public System.Data.Entity.DbSet<WebApi3elements.Models.Device> Devices { get; set; }
+
+        public System.Data.Entity.DbSet<WebApi3elements.Models.Home> Homes { get; set; }
+
+       
     }
 }
