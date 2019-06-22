@@ -1,14 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 using System.Web.Http.Description;
 using WebApi3elements.Models;
+
+using System.Linq.Expressions;
+using WebApi3elements.DTOs;
 
 namespace WebApi3elements.Controllers
 {
@@ -16,10 +17,19 @@ namespace WebApi3elements.Controllers
     {
         private ApplicationDbContext db = new ApplicationDbContext();
 
+        private static readonly Expression<Func<Measure, MeasureDto>> AsMeasureDto =
+           x => new MeasureDto
+           {
+               date = x.date,
+               consumption = x.consumption,
+               type = x.type,
+               deviceName = x.Device.name
+           };
+
         // GET: api/Measures
-        public IQueryable<Measure> GetMeasures()
+        public IQueryable<MeasureDto> GetMeasures()
         {
-            return db.Measures;
+            return db.Measures.Include(b => b.Device).Select(AsMeasureDto);
         }
 
         // GET: api/Measures/5
@@ -33,6 +43,28 @@ namespace WebApi3elements.Controllers
             }
 
             return Ok(measure);
+        }
+
+        // GET: api/Measures?startDate=value&endDate=value
+        [ResponseType(typeof(MeasureDto))]
+        public IQueryable<MeasureDto> GetMeasuresByDate([FromUri]DateTime startDate, [FromUri]DateTime endDate)
+        {
+            return db.Measures.Include(b => b.Device).Where(b => (DbFunctions.TruncateTime(b.date) >= DbFunctions.TruncateTime(startDate)) && (DbFunctions.TruncateTime(b.date) <= DbFunctions.TruncateTime(endDate))).Select(AsMeasureDto);
+
+        }
+
+        // GET: api/Measures?deviceId=value
+        [ResponseType(typeof(MeasureDto))]
+        public IQueryable<MeasureDto> GetMeasuresByDeviceId([FromUri]string deviceId)
+        {
+            return db.Measures.Include(b => b.Device).Where(b => (b.deviceId == deviceId)).Select(AsMeasureDto);
+        }
+
+        // GET: api/Measures?deviceName=value
+        [ResponseType(typeof(MeasureDto))]
+        public IQueryable<MeasureDto> GetMeasuresByDeviceName([FromUri]string deviceName)
+        {
+            return db.Measures.Include(b => b.Device).Where(b => (b.Device.name == deviceName)).Select(AsMeasureDto);
         }
 
         // PUT: api/Measures/5
@@ -71,7 +103,7 @@ namespace WebApi3elements.Controllers
         }
 
         // POST: api/Measures
-        [ResponseType(typeof(Measure))]
+        [ResponseType(typeof(MeasureDto))]
         public IHttpActionResult PostMeasure(Measure measure)
         {
             if (!ModelState.IsValid)
@@ -82,6 +114,16 @@ namespace WebApi3elements.Controllers
             db.Measures.Add(measure);
             db.SaveChanges();
 
+
+            // Cargar datos de Device en la variable measure
+            db.Entry(measure).Reference(x => x.Device).Load();
+            var dto = new MeasureDto()
+            {
+                date = measure.date,
+                consumption = measure.consumption,
+                type = measure.type,
+                deviceName = measure.Device.name
+            };
             return CreatedAtRoute("DefaultApi", new { id = measure.measureId }, measure);
         }
 
